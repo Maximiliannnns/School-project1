@@ -3,7 +3,15 @@ import numpy as np
 import cv2 as cv
 import math
 
+#определяю сколько мм в одном пикселе
+wm = 370
+hm = 270
+wp = 1100
+wh = 800
+pixel_mm = wm / wp
+print(pixel_mm)
 
+#коэфеценты для исправления искажения изображения
 dist_coef = np.array([[-1.29056527e+00,  2.91293440e+01,  1.66309525e-02, -3.54592780e-02, -2.45822510e-01]])
 camera_matrix = np.array([[3.29266406e+03, 0.00000000e+00, 3.48629874e+02],
 [0.00000000e+00, 3.04181422e+03, 1.54920825e+02],
@@ -28,11 +36,9 @@ color_blue = (255, 0, 0)
 color_yellow = (0, 255, 255)
 
 if __name__ == '__main__':
-    fn = 'images/photo1.jpg'
+    fn = 'images/photo00.jpg'
     img = cv.imread(fn)
     
-
-
     img_undist = cv.undistort(img, cameraMatrix=camera_matrix, distCoeffs=dist_coef)
 
     hsv = cv.cvtColor(img_undist, cv.COLOR_BGR2GRAY)  # цвет меняю с BGR на HSV
@@ -47,6 +53,14 @@ if __name__ == '__main__':
         box = cv.boxPoints(rect)  # поиск четырех вершин прямоугольника
         box = np.int0(box)  # округление координат
         center = (int(rect[0][0]), int(rect[0][1]))
+        #ищу координаты центра квадрата
+        X = center[0]
+        Y = center[1]
+        print(X, Y)
+        #перевожу в мм
+        Xm = X * pixel_mm
+        Ym = Y * pixel_mm
+        print(Xm, Ym)
         area = int(rect[1][0] * rect[1][1])  # вычисление площади
         if area > 10000 and area < 1000000:           
             pymin = get_miny_point(box)# точка с  мин у среди всех вершин квадрата 
