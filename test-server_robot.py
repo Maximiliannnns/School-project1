@@ -34,8 +34,8 @@ setp = con.send_input_setup(setp_names, setp_types)
 watchdog = con.send_input_setup(watchdog_names, watchdog_types)
 
 # Setpoints to move the robot to
-setp1 = [-0.12, -0.43, 0.14, 0, 3.11, 0.04]
-setp2 = [-0.12, -0.51, 0.21, 0, 3.11, 0.04]
+#setp1 = [-0.12, -0.43, 0.14, 0, 3.11, 0.04]
+#setp2 = [-0.12, -0.51, 0.21, 0, 3.11, 0.04]
 
 setp.input_double_register_0 = 0
 setp.input_double_register_1 = 0
@@ -150,6 +150,8 @@ while keep_running:
 
         cv.waitKey()
         cv.destroyAllWindows()
+
+    setp1 = [Xm, Ym, 0.14, 0, 3.11, 0.04]
 
     if state is None:
         break;
