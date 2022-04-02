@@ -20,7 +20,7 @@ logging.getLogger().setLevel(logging.INFO)
 conf = rtde_config.ConfigFile(config_filename)
 state_names, state_types = conf.get_recipe('state')
 setp_names, setp_types = conf.get_recipe('setp')
-#watchdog_names, watchdog_types = conf.get_recipe('watchdog')
+watchdog_names, watchdog_types = conf.get_recipe('watchdog')
 
 con = rtde.RTDE(ROBOT_HOST, ROBOT_PORT)
 con.connect()
@@ -31,7 +31,7 @@ con.get_controller_version()
 # setup recipes
 con.send_output_setup(state_names, state_types)
 setp = con.send_input_setup(setp_names, setp_types)
-#watchdog = con.send_input_setup(watchdog_names, watchdog_types)
+watchdog = con.send_input_setup(watchdog_names, watchdog_types)
 
 # Setpoints to move the robot to
 #setp1 = [-0.12, -0.43, 0.14, 0, 3.11, 0.04]
@@ -45,13 +45,14 @@ setp.input_double_register_4 = 0
 setp.input_double_register_5 = 0
 
 # The function "rtde_set_watchdog" in the "rtde_control_loop.urp" creates a 1 Hz watchdog
-#watchdog.input_int_register_0 = 0
+watchdog.input_int_register_0 = 0
 
 wm = 490
 hm = 350
 wp = 819
 wh = 599
-pixel_mm = wm / wp
+pixel_mm1 = wm / wp
+pixel_mm2 = hm / wh
 
 
 #коэфеценты для исправления искажения изображения
@@ -125,8 +126,8 @@ while keep_running:
             Y = center[1]
             print(X, Y)
             # перевожу в мм
-            Xm = (X * pixel_mm) / 1000
-            Ym = (Y * pixel_mm) / 1000
+            Xm = (X * pixel_mm1) / 1000
+            Ym = (Y * pixel_mm2) / 1000
             area = int(rect[1][0] * rect[1][1])  # вычисление площади
             if area > 10000 and area < 1000000:
                 print(Xm, Ym)
@@ -162,7 +163,7 @@ while keep_running:
     con.send(setp)
 
     # kick watchdog
-#    con.send(watchdog)
+    con.send(watchdog)
 
 con.send_pause()
 
