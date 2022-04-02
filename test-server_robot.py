@@ -20,7 +20,7 @@ logging.getLogger().setLevel(logging.INFO)
 conf = rtde_config.ConfigFile(config_filename)
 state_names, state_types = conf.get_recipe('state')
 setp_names, setp_types = conf.get_recipe('setp')
-watchdog_names, watchdog_types = conf.get_recipe('watchdog')
+#watchdog_names, watchdog_types = conf.get_recipe('watchdog')
 
 con = rtde.RTDE(ROBOT_HOST, ROBOT_PORT)
 con.connect()
@@ -31,7 +31,7 @@ con.get_controller_version()
 # setup recipes
 con.send_output_setup(state_names, state_types)
 setp = con.send_input_setup(setp_names, setp_types)
-watchdog = con.send_input_setup(watchdog_names, watchdog_types)
+#watchdog = con.send_input_setup(watchdog_names, watchdog_types)
 
 # Setpoints to move the robot to
 #setp1 = [-0.12, -0.43, 0.14, 0, 3.11, 0.04]
@@ -45,20 +45,21 @@ setp.input_double_register_4 = 0
 setp.input_double_register_5 = 0
 
 # The function "rtde_set_watchdog" in the "rtde_control_loop.urp" creates a 1 Hz watchdog
-watchdog.input_int_register_0 = 0
+#watchdog.input_int_register_0 = 0
 
-wm = 370
-hm = 270
-wp = 1100
-wh = 800
+wm = 490
+hm = 350
+wp = 819
+wh = 599
 pixel_mm = wm / wp
-print(pixel_mm)
+
 
 #коэфеценты для исправления искажения изображения
-dist_coef = np.array([[-1.29056527e+00,  2.91293440e+01,  1.66309525e-02, -3.54592780e-02, -2.45822510e-01]])
-camera_matrix = np.array([[3.29266406e+03, 0.00000000e+00, 3.48629874e+02],
-[0.00000000e+00, 3.04181422e+03, 1.54920825e+02],
-[0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+dist_coef = np.array([[-2.02945255e+00,  1.90093052e+02,  2.66508451e-02,  2.24567271e-02,   
+  -6.01011230e+03]])
+camera_matrix = np.array([[3.89167040e+03, 0.00000000e+00, 1.01148810e+03],
+ [0.00000000e+00, 3.72302190e+03, 4.89507813e+02],
+ [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
 
 def get_miny_point(box):
     ymin = box[0]
@@ -101,18 +102,18 @@ while keep_running:
     # receive the current state
     state = con.receive()
 
-    if __name__ == '__main__':
-        fn = 'images/photo00.jpg'
-        img = cv.imread(fn)
+    fn = 'images/photo00.jpg'
+    img = cv.imread(fn)
+    
+    img_undist = img
 
-        img_undist = cv.undistort(img, cameraMatrix=camera_matrix, distCoeffs=dist_coef)
+    hsv = cv.cvtColor(img_undist, cv.COLOR_BGR2GRAY)  # цвет меняю с BGR на HSV
+    img_binary = cv.threshold(hsv, 200, 255, cv.THRESH_BINARY)[1]
+    cv.imshow("1", img_binary)
+    contours0, hierarchy = cv.findContours(img_binary.copy(), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
-        hsv = cv.cvtColor(img_undist, cv.COLOR_BGR2GRAY)  # цвет меняю с BGR на HSV
-        img_binary = cv.threshold(hsv, 200, 255, cv.THRESH_BINARY)[1]
-        cv.imshow("1", img_binary)
-        contours0, hierarchy = cv.findContours(img_binary.copy(), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-
-        # перебираю  все найденные контуры в цикле
+    # перебираю  все найденные контуры в цикле
+    if contours0 != 0:
         for cnt in contours0:
             rect = cv.minAreaRect(cnt)  # пытаемся вписать прямоугольник
             print(rect)
@@ -124,11 +125,11 @@ while keep_running:
             Y = center[1]
             print(X, Y)
             # перевожу в мм
-            Xm = X * pixel_mm
-            Ym = Y * pixel_mm
-            print(Xm, Ym)
+            Xm = (X * pixel_mm) / 1000
+            Ym = (Y * pixel_mm) / 1000
             area = int(rect[1][0] * rect[1][1])  # вычисление площади
             if area > 10000 and area < 1000000:
+                print(Xm, Ym)
                 pymin = get_miny_point(box)  # точка с  мин у среди всех вершин квадрата
                 pxmin = get_minx_point(box)  # точка с  мин х среди всех вершин квадрата
                 usedEdge = np.int0((pxmin[0] - pymin[0], pxmin[1] - pymin[1]))
@@ -138,33 +139,30 @@ while keep_running:
                 angle = 180 - (180.0 / math.pi * math.acos(
                     (reference[0] * usedEdge[0] + reference[1] * usedEdge[1]) / (
                                 cv.norm(reference) * cv.norm(usedEdge))))
+                angle1 = (math.pi * angle) / 180
+                setp1 = [Xm, Ym, 0.14, angle1, 3.14, 0]
 
                 if area > 500:
                     cv.drawContours(img_undist, [box], 0, (255, 0, 0), 2)  # рисуем прямоугольник
                     cv.circle(img_undist, center, 5, color_yellow, 2)  # рисуем маленький кружок в центре прямоугольника
                     # выводим в кадр величину угла наклона
                     cv.putText(img_undist, "%d" % int(angle), (center[0] + 20, center[1] - 20),
-                               cv.FONT_HERSHEY_SIMPLEX, 1, color_yellow, 2)
-
-            cv.imshow('contours', img_undist)
-
-        cv.waitKey()
-        cv.destroyAllWindows()
-
-    setp1 = [Xm, Ym, 0.14, 0, 3.11, 0.04]
+                                cv.FONT_HERSHEY_SIMPLEX, 1, color_yellow, 2)
+            
+    else:
+        setp1 = [0, 0, 0, 0, 0, 0]
+    
+    cv.imshow('contours', img_undist)
 
     if state is None:
         break;
-
-    # do something...
-    if state.output_int_register_0 != 0:
-        new_setp = setp1 if setp_to_list(setp) == setp2 else setp2
-        list_to_setp(setp, new_setp)
-        # send new setpoint
-        con.send(setp)
+    
+    list_to_setp(setp, setp1)
+    
+    con.send(setp)
 
     # kick watchdog
-    con.send(watchdog)
+#    con.send(watchdog)
 
 con.send_pause()
 
